@@ -91,16 +91,13 @@ class MirrorLeechListener:
         
     async def onDownloadStart(self):
         if config_dict['LEECH_LOG_ID']:
-            msg = f"""<b>Task Started</b>
-
-<b>• Mode:</b> {self.upload_details['mode']}
-<b>• Task by:</b> {self.tag}
-<b>• User ID: </b><code>{self.message.from_user.id}</code>"""
+            msg = f'<b>Task Started</b>\n\n'
+            msg += f'<b>• Mode:</b> {self.upload_details['mode']}\n'
+            msg += f'<b>• Task by:</b> {self.tag}\n'
+            msg += f'<b>• User ID: </b><code>{self.message.from_user.id}</code>'
             self.linkslogmsg = await sendCustomMsg(config_dict['LEECH_LOG_ID'], msg)
         user_dict = user_data.get(self.message.from_user.id, {})
         self.botpmmsg = await sendCustomMsg(self.message.from_user.id, '<b>Task started</b>')
-        if self.isSuperGroup and config_dict['INCOMPLETE_TASK_NOTIFIER'] and DATABASE_URL:
-            await DbManager().add_incomplete_task(self.message.chat.id, self.message.link, self.tag)
 
     async def onDownloadComplete(self):
         multi_links = False
@@ -363,8 +360,6 @@ class MirrorLeechListener:
             await RCTransfer.upload(up_path, size)
 
     async def onUploadComplete(self, link, size, files, folders, mime_type, name, rclonePath=''):
-        if self.isSuperGroup and config_dict['INCOMPLETE_TASK_NOTIFIER'] and DATABASE_URL:
-            await DbManager().rm_complete_task(self.message.link)
         user_id = self.message.from_user.id
         name, _ = await format_filename(name, user_id, isMirror=not self.isLeech)
         user_dict = user_data.get(user_id, {})
@@ -409,7 +404,7 @@ class MirrorLeechListener:
                 if self.isSuperGroup:
                     btn.ibutton('View in inbox', f"aeon {user_id} botpm", 'header')
                     btn = extra_btns(btn)
-                    await sendMessage(self.message, f'{msg} <b>Files has been sent to your inbox</b>', btn.build_menu(1))
+                    await sendMessage(self.message, f'{msg}<b>Files has been sent to your inbox</b>', btn.build_menu(1))
                 else:
                     await deleteMessage(self.botpmmsg)
             if self.seed:
@@ -440,8 +435,9 @@ class MirrorLeechListener:
                 elif not rclonePath:
                     INDEX_URL = self.index_link if self.drive_id else config_dict['INDEX_URL']
                     if INDEX_URL:
-                        url_path = rutils.quote(f'{name}')
-                        share_url = f'{INDEX_URL}/{url_path}'
+                        drive = GoogleDriveHelper()
+                        dir_id = drive.getIdFromUrl(link)
+                        share_url = f'{INDEX_URL}findpath?id={dir_id}'
                         if mime_type == "Folder":
                             share_url += '/'
                         buttons.ubutton('Index link', share_url)
@@ -503,11 +499,10 @@ class MirrorLeechListener:
             if self.sameDir and self.uid in self.sameDir['tasks']:
                 self.sameDir['tasks'].remove(self.uid)
                 self.sameDir['total'] -= 1
-        msg = f'''Hey, {self.tag}!
-Your download has been stopped!
-
-<b>Reason:</b> {escape(error)}
-<b>Elapsed:</b> {get_readable_time(time() - self.message.date.timestamp())}'''
+        msg = f'Hey, {self.tag}!\n'
+        msg += 'Your download has been stopped!\n\n'
+        msg += f'<b>Reason:</b> {escape(error)}\n'
+        msg += f'<b>Elapsed:</b> {get_readable_time(time() - self.message.date.timestamp())}'
         x = await sendMessage(self.message, msg, button)
         await delete_links(self.message)
         if self.botpmmsg:
@@ -520,8 +515,6 @@ Your download has been stopped!
             await update_all_messages()
         if self.isSuperGroup and self.botpmmsg:
             await sendMessage(self.botpmmsg, msg, button)
-        if self.isSuperGroup and config_dict['INCOMPLETE_TASK_NOTIFIER'] and DATABASE_URL:
-            await DbManager().rm_complete_task(self.message.link)
         await five_minute_del(x)
         
         async with queue_dict_lock:
@@ -547,11 +540,10 @@ Your download has been stopped!
             if self.uid in download_dict.keys():
                 del download_dict[self.uid]
             count = len(download_dict)
-        msg = f'''Hey, {self.tag}!
-Your upload has been stopped!
-
-<b>Reason:</b> {escape(error)}
-<b>Elapsed:</b> {get_readable_time(time() - self.message.date.timestamp())}'''
+        msg = f'Hey, {self.tag}!\n'
+        msg += 'Your upload has been stopped!\n\n'
+        msg += f'<b>Reason:</b> {escape(error)}\n'
+        msg += f'<b>Elapsed:</b> {get_readable_time(time() - self.message.date.timestamp())}'
         x = await sendMessage(self.message, msg)
         if self.linkslogmsg:
             await deleteMessage(self.linkslogmsg)
@@ -564,8 +556,6 @@ Your upload has been stopped!
             await update_all_messages()
         if self.isSuperGroup and self.botpmmsg:
             await sendMessage(self.botpmmsg, msg)
-        if self.isSuperGroup and config_dict['INCOMPLETE_TASK_NOTIFIER'] and DATABASE_URL:
-            await DbManager().rm_complete_task(self.message.link)
         await five_minute_del(x)
         
         async with queue_dict_lock:

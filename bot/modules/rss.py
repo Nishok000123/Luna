@@ -620,7 +620,7 @@ async def rssMonitor():
                             feed_msg = f"/{feed_msg}"
                     else:
                         feed_msg = f"<b>Name: </b><code>{item_title.replace('>', '').replace('<', '')}</code>\n\n"
-                        feed_msg += f"<b>Link: </b><code>{url}</code>"
+                        feed_msg += f"<b><a href='{url}'>Link</a>: </b><code>{url}</code>"
                     feed_msg += f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>"
                     await sendRss(feed_msg)
                     feed_count += 1
@@ -644,12 +644,10 @@ async def rssMonitor():
 
 
 def addJob(delay):
-    scheduler.add_job(rssMonitor, trigger=IntervalTrigger(seconds=delay), id='0', name='RSS', misfire_grace_time=15,
-                      max_instances=1, next_run_time=datetime.now()+timedelta(seconds=20), replace_existing=True)
+    scheduler.add_job(rssMonitor, trigger=IntervalTrigger(seconds=delay), id='0', name='RSS', misfire_grace_time=15, max_instances=1, next_run_time=datetime.now()+timedelta(seconds=20), replace_existing=True)
 
 
 addJob(config_dict['RSS_DELAY'])
 scheduler.start()
-bot.add_handler(MessageHandler(getRssMenu, filters=command(
-    BotCommands.RssCommand) & CustomFilters.authorized))
+bot.add_handler(MessageHandler(getRssMenu, filters=command(BotCommands.RssCommand) & CustomFilters.authorized))
 bot.add_handler(CallbackQueryHandler(rssListener, filters=regex("^rss")))
